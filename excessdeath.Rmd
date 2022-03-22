@@ -1,0 +1,55 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+data = X13100768
+```
+
+```{r}
+#filter for BC
+data_BC = data %>% filter(GEO == 'British Columbia, place of occurrence') %>% filter(Sex == 'Both sexes')
+data_BC_clean = data_BC[,c('REF_DATE', 'Age at time of death', 'VALUE') ]
+"%Y-%m-%d"
+```
+
+```{r}
+data_BC_clean = data_BC_clean %>%
+  mutate(week = strftime(c(REF_DATE), format = "%V")) %>%
+  mutate(year = as.numeric(format(REF_DATE,'%Y')))
+data_BC_clean = data_BC_clean %>%
+  mutate(week = strtoi(week))
+library(stringr)
+data_BC_clean = data_BC_clean %>%
+  mutate(age = str_sub(`Age at time of death`, 23))
+```
+
+```{r plotTwo, echo=FALSE, fig.ncol=2, fig.start='#', fig.cap='Total deaths', fig.subcap = 1:2, fig.height=4, fig.width=4}
+plot(data_BC_clean[data_BC_clean$age == 'all ages', c('REF_DATE','VALUE')], 
+  type='o', log='y')
+
+xWide2 = reshape2::dcast(data_BC_clean, week + age ~ year, value.var='VALUE')
+Syear = grep("[[:digit:]]", colnames(xWide2), value=TRUE)
+Scol = rainbow(length(Syear))
+matplot(xWide2[xWide2$age == 'all ages', Syear],
+  type='l', lty=1, col=Scol)
+legend('topright', 
+  col=Scol, legend=Syear, 
+  bty='n', lty=1, lwd=3, cex=0.6)
+```
+
+```{r averageWekly, echo=TRUE}
+  data_BC_clean$covidYear = pmax(data_BC_clean$year, 2019)
+  bcAgg = reshape2::dcast(
+    data_BC_clean,
+    covidYear + week ~ age,
+    value.var = 'VALUE',
+    fun.aggregate = mean
+  )
+  bcAgg[c(1,2,100),]
+```
